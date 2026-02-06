@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 	"github.com/xendit/xendit-go/v6"
 	"github.com/xendit/xendit-go/v6/invoice"
 	"golang.org/x/crypto/bcrypt"
@@ -107,10 +109,16 @@ func updateOrderStatus(c *gin.Context) {
 }
 
 func main() {
+
 	var err error
 	db, err = gorm.Open(sqlite.Open("goshop.db"), &gorm.Config{})
 	if err != nil {
 		panic("Gagal koneksi database!")
+	}
+
+	err = godotenv.Load()
+	if err != nil {
+		fmt.Println("Warning: .env file not found")
 	}
 
 	db.AutoMigrate(&Product{}, &Order{}, &OrderItem{}, &User{})
@@ -380,8 +388,8 @@ func createOrder(c *gin.Context) {
 	// 3. --- LOGIKA XENDIT INVOICE ---
 	// Inisialisasi Client
 	// GANTI DENGAN SECRET KEY DARI DASHBOARD XENDIT TADI!
-	xenditClient := xendit.NewClient("xnd_development_73owz0orqBnBMO0Eo9CnWXUafevzN0DQwnaSjZqLYrcPEfvmO2TZ5pEFUqDJCHp")
-
+	apiKey := os.Getenv("XENDIT_API_KEY")
+	xenditClient := xendit.NewClient(apiKey)
 	// Siapkan Data Invoice
 	externalID := fmt.Sprintf("ORDER-%d-%d", order.ID, time.Now().Unix())
 	amount := float64(input.Total)
