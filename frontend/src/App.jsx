@@ -190,7 +190,11 @@ function App() {
         <Route path="/" element={
           <>
             <Navbar user={token} cartCount={cart.length} onOpenCart={() => setIsCartOpen(true)} onOpenAuth={() => setIsAuthModalOpen(true)} onLogout={handleLogout} goToProfile={() => navigate("/profile")} />
-            <LandingPage products={products} loading={loading} onAddToCart={addToCart} onDecreaseItem={decreaseCartItem} cart={cart} />
+            <LandingPage 
+                onAddToCart={addToCart} 
+                onDecreaseItem={decreaseCartItem} 
+                cart={cart} 
+            />
           </>
         } />
         <Route path="/admin" element={token && role === 'admin' ? <AdminDashboard token={token} onLogout={handleLogout} /> : <Navigate to="/" />} />

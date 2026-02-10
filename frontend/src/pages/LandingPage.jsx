@@ -1,23 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Minus, ShoppingBag, Search, Filter } from "lucide-react";
 import { formatRupiah } from "../utils/format";
+import toast from "react-hot-toast";
 
-export default function LandingPage({ products, onAddToCart, onDecreaseItem, loading, cart }) {
+export default function LandingPage({ onAddToCart, onDecreaseItem, cart }) {
+  // --- STATE LOKAL ---
+  const [products, setProducts] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  
   const [activeCategory, setActiveCategory] = useState("Semua");
-  const [searchQuery, setSearchQuery] = useState(""); 
+  const [keyword, setKeyword] = useState(""); 
 
   const categories = ["Semua", "Elektronik", "Fashion", "Aksesoris"];
 
-  const filteredProducts = products.filter(p => {
-    const matchesCategory = activeCategory === "Semua" 
-      ? true 
-      : (activeCategory === "Elektronik" && (p.name.toLowerCase().includes("laptop") || p.name.toLowerCase().includes("hp"))) ||
-        (activeCategory === "Fashion" && (p.name.toLowerCase().includes("kemeja") || p.name.toLowerCase().includes("sepatu") || p.name.toLowerCase().includes("celana"))) ||
-        (activeCategory === "Aksesoris" && (p.name.toLowerCase().includes("jam") || p.name.toLowerCase().includes("tas") || p.name.toLowerCase().includes("sandal")));
-    
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  // --- 1. FUNGSI SMART FETCH (Server-Side) ---
+  // Menggabungkan filter Search & Category sekaligus
+  const fetchProducts = async (searchVal = keyword, catVal = activeCategory) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      
+      // Jika ada search, tambahkan ke parameter
+      if (searchVal) params.append("search", searchVal);
+      
+      // Jika kategori bukan "Semua", tambahkan ke parameter
+      if (catVal && catVal !== "Semua") params.append("category", catVal);
+
+      // Contoh hasil URL: /api/products?search=sepatu&category=Fashion
+      const url = `http://localhost:8080/api/products?${params.toString()}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+      setProducts(data.data || []);
+    } catch (error) {
+      console.error("Gagal ambil produk:", error);
+      toast.error("Gagal memuat produk");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 2. EFFECT: AUTO FETCH SAAT KATEGORI BERUBAH ---
+  useEffect(() => {
+    // Kita panggil fetch dengan keyword saat ini dan kategori yang baru dipilih
+    fetchProducts(keyword, activeCategory);
+  }, [activeCategory]); // <- Jalan setiap activeCategory berubah
+
+  // Handler saat user menekan Enter di kolom search
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchProducts(keyword, activeCategory);
+  };
 
   const getQtyInCart = (productId) => {
     return cart ? cart.filter(item => item.id === productId).length : 0;
@@ -26,7 +59,7 @@ export default function LandingPage({ products, onAddToCart, onDecreaseItem, loa
   return (
     <div className="bg-gray-50 min-h-screen">
       
-      {/* 1. HERO SECTION */}
+      {/* 1. HERO SECTION (TIDAK BERUBAH) */}
       <section className="relative bg-blue-600 overflow-hidden pt-28 pb-20 px-6 sm:px-12 lg:px-20 text-white">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
             <div className="absolute top-10 left-10 w-72 h-72 bg-white rounded-full blur-3xl mix-blend-overlay"></div>
@@ -52,7 +85,6 @@ export default function LandingPage({ products, onAddToCart, onDecreaseItem, loa
                 </button>
             </div>
             
-            {/* HERO IMAGE FIXED: Ganti URL Gambar yang lebih stabil */}
             <div className="md:w-1/2 flex justify-center md:justify-end animate-in slide-in-from-right duration-700 delay-100">
                 <div className="relative w-full max-w-md aspect-square bg-gradient-to-b from-white/10 to-white/5 rounded-[3rem] p-4 border border-white/20 backdrop-blur-sm shadow-2xl">
                     <img 
@@ -68,19 +100,19 @@ export default function LandingPage({ products, onAddToCart, onDecreaseItem, loa
       {/* 2. MAIN CONTENT */}
       <main id="catalog" className="max-w-7xl mx-auto px-6 py-12">
         
-        {/* --- PERBAIKAN FILTER KATEGORI DI SINI --- */}
+        {/* CONTROLS: SEARCH & FILTER */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10 sticky top-24 z-30 bg-gray-50/95 backdrop-blur-sm py-4 rounded-xl px-2">
             
-            {/* Tabs Kategori: Style Clean (Tanpa Ring Aneh) */}
+            {/* Tabs Kategori */}
             <div className="flex gap-3 overflow-x-auto pb-2 w-full md:w-auto hide-scrollbar">
                 {categories.map((cat) => (
                     <button
                         key={cat}
-                        onClick={() => setActiveCategory(cat)}
+                        onClick={() => setActiveCategory(cat)} // State berubah -> useEffect jalan -> Fetch API
                         className={`px-6 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${
                             activeCategory === cat
-                            ? "bg-blue-600 text-white shadow-md transform scale-105" // Style Aktif: Solid Biru
-                            : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100 hover:text-blue-600" // Style Tidak Aktif: Putih Bersih
+                            ? "bg-blue-600 text-white shadow-md transform scale-105"
+                            : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100 hover:text-blue-600"
                         }`}
                     >
                         {cat}
@@ -88,17 +120,17 @@ export default function LandingPage({ products, onAddToCart, onDecreaseItem, loa
                 ))}
             </div>
 
-            {/* Input Search */}
-            <div className="relative w-full md:w-80 group">
+            {/* Input Search (SERVER SIDE) */}
+            <form onSubmit={handleSearch} className="relative w-full md:w-96 group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition" size={18} />
                 <input 
                     type="text" 
-                    placeholder="Cari produk..." 
+                    placeholder="Cari produk & tekan Enter..." 
                     className="w-full pl-11 pr-4 py-3 rounded-full border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition bg-white shadow-sm"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
                 />
-            </div>
+            </form>
         </div>
 
         {/* 3. PRODUCT GRID */}
@@ -108,17 +140,36 @@ export default function LandingPage({ products, onAddToCart, onDecreaseItem, loa
                 <div key={i} className="bg-white rounded-3xl h-96 animate-pulse"></div>
              ))}
            </div>
-        ) : filteredProducts.length === 0 ? (
+        ) : products.length === 0 ? (
             <div className="text-center py-20">
                 <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Filter className="text-gray-400" size={40}/>
                 </div>
                 <h3 className="text-xl font-bold text-gray-800">Produk tidak ditemukan</h3>
-                <p className="text-gray-500">Coba kata kunci lain atau ganti kategori.</p>
+                <p className="text-gray-500">
+                    {keyword 
+                        ? `Tidak ada hasil untuk "${keyword}" di kategori ${activeCategory}` 
+                        : `Belum ada produk di kategori ${activeCategory}.`}
+                </p>
+                {(keyword || activeCategory !== "Semua") && (
+                     <button 
+                        onClick={() => {
+                            setKeyword(""); 
+                            setActiveCategory("Semua");
+                        }} 
+                        className="text-blue-600 font-bold mt-2 hover:underline"
+                     >
+                        Reset Filter
+                     </button>
+                )}
             </div>
         ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {filteredProducts.map((product) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-in fade-in duration-500">
+                {/* PERUBAHAN PENTING:
+                   Looping langsung ke 'products', bukan 'filteredProducts'.
+                   Data yang ada di sini sudah difilter oleh Backend.
+                */}
+                {products.map((product) => {
                     const qty = getQtyInCart(product.id);
                     const isOutOfStock = product.stock === 0;
 

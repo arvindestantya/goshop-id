@@ -5,11 +5,12 @@ import (
 )
 
 type Product struct {
-	ID    uint    `json:"id" gorm:"primaryKey"`
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
-	Image string  `json:"image"`
-	Stock int     `json:"stock"`
+	ID       uint    `json:"id" gorm:"primaryKey"`
+	Name     string  `json:"name"`
+	Price    float64 `json:"price"`
+	Image    string  `json:"image"`
+	Stock    int     `json:"stock"`
+	Category string  `json:"category"`
 }
 
 type Order struct {
